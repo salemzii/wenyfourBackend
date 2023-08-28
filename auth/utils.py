@@ -1,14 +1,13 @@
 from datetime import datetime, timedelta
-from typing import Annotated, Union
+from typing import Annotated, Union, Union
+from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-import motor.motor_asyncio 
-from pydantic import BaseModel
 
 
-from .models import UserModel, Token, TokenData, CustomOAuth2PasswordRequestForm, UserLoginModel
+from .models import UserModel, TokenData, UserLoginModel
 from database import db as mongoDB
 
 # to get a string like this run:
@@ -91,3 +90,8 @@ async def get_current_active_user(
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+def filter_none_and_empty_fields(update_data):
+    # Filter out fields with values of None or an empty string
+    return {key: value for key, value in update_data.items() if value is not None and value != ""}
