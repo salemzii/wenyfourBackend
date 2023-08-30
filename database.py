@@ -1,6 +1,8 @@
 import os
 import motor.motor_asyncio
+from dotenv import load_dotenv
 
+load_dotenv()
 #os.environ["MONGODB_URL"]
-client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://salem:auth1234%23@localhost:27017/?authMechanism=DEFAULT")
+client = motor.motor_asyncio.AsyncIOMotorClient(os.environ["MONGODB_URL"])
 db = client.wenyfour
