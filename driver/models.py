@@ -21,15 +21,15 @@ class ReportModel(BaseModel):
 
 
 class DriverModel(BaseModel):
-    id: str
+    id: str= Field(None)
     nin: AnyUrl = Field(...)
     driver_license: AnyUrl = Field(...)
     is_verified: bool = False
-    user_id: str
+    user_id: str = Field(None)
 
-    ratings: List[RatingModel]
-    reviews: List[ReviewModel]
-    reports: List[ReportModel]
+    ratings: List[RatingModel] = Field(default=[])
+    reviews: List[ReviewModel] = Field(default=[])
+    reports: List[ReportModel] = Field(default=[])
 
     class Config:
         arbitrary_types_allowed = True
@@ -37,8 +37,18 @@ class DriverModel(BaseModel):
             "example": {
                 "nin": "https://s3.store/12jrjjjrj950/",
                 "driver_license": "https://s3.store/12jrjjjrj950/",
-                "is_verified": True
             }
         }
 
+    def encode(self):
+        return {
+                "id": self.id, 
+                "nin": self.nin.unicode_string(), 
+                "driver_licence": self.driver_license.unicode_string(),
+                "user_id": self.user_id,
+                "is_verified": self.is_verified,
+                "ratings": self.ratings,
+                "reviews": self.reviews,
+                "reports": self.reports
+                }
 

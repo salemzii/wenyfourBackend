@@ -39,7 +39,9 @@ async def get_user(db, email: str) -> UserModel:
     user = await db["users"].find_one({"email": email})
 
     if user:
-        return UserModel(**user)
+        uM = UserModel(**user)
+        uM.id = str(user["_id"])
+        return uM
     return None
  
 
@@ -72,6 +74,7 @@ async def get_current_user(token: str):
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception

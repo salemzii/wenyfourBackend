@@ -70,6 +70,7 @@ async def update_user(userId: str, user: UpdateUserModel):
     # User not found
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with ID {userId} not found")
 
+
 @router.get("/all", response_description="Get all Users", response_model=list[UserModel])
 async def get_all_users():
     users = []

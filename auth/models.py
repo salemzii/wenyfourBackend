@@ -6,6 +6,7 @@ from datetime import datetime
 
 
 class UserModel(BaseModel):
+    id: str = Field(None)
     name: str = Field(...)
     email: EmailStr = Field(...)
     phone: str = Field(...)
