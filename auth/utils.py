@@ -39,8 +39,8 @@ async def get_user(db, email: str) -> UserModel:
     user = await db["users"].find_one({"email": email})
 
     if user:
+        user["id"] = str(user["_id"])
         uM = UserModel(**user)
-        uM.id = str(user["_id"])
         return uM
     return None
  

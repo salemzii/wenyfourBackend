@@ -18,7 +18,7 @@ from .utils import (
                         ACCESS_TOKEN_EXPIRE_MINUTES,
                         ALGORITHM, 
                 )
-
+from driver.dependencies import get_current_user_by_jwtoken
 from database import db as mongoDB
 
 router = APIRouter(
@@ -41,6 +41,31 @@ async def create_user(user: UserModel):
     created_user["_id"] = str(created_user["_id"])
 
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_user)
+
+
+@router.get("/me", response_description="fetch logged In user", response_model=UserModel)
+async def get_loggedin_user(user:Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
+    if user:
+        user.id = str(user.id)
+        user_enc = jsonable_encoder(user)
+        return JSONResponse(status_code=200, content=user_enc)
+    return JSONResponse(status_code=404, content={"error": "user not logged in"})
+
+
+@router.get("/{userId}/user", response_description="get user by Id", response_model=UserModel)
+async def get_user_by_Id(userId: str):
+    # Convert the userId to ObjectId
+    user_id_object = ObjectId(userId)
+
+    # Check if the user exists
+    _user = await mongoDB["users"].find_one({"_id": user_id_object})    
+
+    if _user:
+        del _user["_id"]
+        _user["id"] = userId
+        user_enc = jsonable_encoder(_user)
+        return JSONResponse(status_code=200, content=user_enc)
+    return JSONResponse(status_code=404, content={"error": f"user with Id={userId} not found"})        
 
 
 @router.put("/{userId}/update", response_description="Update User", response_model=str)
@@ -115,7 +140,13 @@ async def login_for_access_token(
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+            "access_token": access_token, 
+            "token_type": "bearer", 
+            "user_id": user.id, 
+            "name": user.name, 
+            "email": user.email
+        }
 
 
 @router.get("/me", response_model=UserModel)
