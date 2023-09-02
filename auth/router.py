@@ -125,7 +125,7 @@ async def delete_user(userId: str):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with ID {userId} not found")
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login")
 async def login_for_access_token(
     userlogin: UserLoginModel
 ):
