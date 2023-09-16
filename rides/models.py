@@ -26,6 +26,8 @@ class Ride(BaseModel):
     time: datetime.time = Field(...)
     from_location: str = Field(...)
     to_location: str = Field(...)
+    pickup_locaton: str = Field(...)
+    dropoff_location: str = Field(...)
     gender: str = Field(...)
     seats: int = Field(...)
     seat_price: float = Field(...)
@@ -45,6 +47,8 @@ class Ride(BaseModel):
                 "time": datetime_exp.time(),
                 "from_location": "kano",
                 "to_location": "dutse",
+                "pickup_location": "zaria road",
+                "dropoff_location": "investment",
                 "gender": "any",
                 "seats": 4,
                 "seat_price": 4000.00,

@@ -33,14 +33,18 @@ router = APIRouter(
 async def create_user(user: UserModel):
     hashed_password = get_password_hash(password=user.password)
     user.password = hashed_password
-    #user.is_active = True 
-    # more error handling here pls
-    user_enc = jsonable_encoder(user)
-    new_user = await mongoDB["users"].insert_one(user_enc)
-    created_user = await mongoDB["users"].find_one({"_id": new_user.inserted_id})
-    created_user["_id"] = str(created_user["_id"])
 
-    return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_user)
+    check_mail = await mongoDB["users"].find_one({"email": user.email})
+    # more error handling here pls
+
+    if not check_mail:
+        user_enc = jsonable_encoder(user)
+        new_user = await mongoDB["users"].insert_one(user_enc)
+        created_user = await mongoDB["users"].find_one({"_id": new_user.inserted_id})
+        created_user["_id"] = str(created_user["_id"])
+
+        return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_user)
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user with the mail already exists")
 
 
 @router.get("/me", response_description="fetch logged In user", response_model=UserModel)
@@ -102,9 +106,11 @@ async def get_all_users():
 
     # Retrieve all user documents from the MongoDB collection
     async for user in mongoDB["users"].find():
+        user["id"] = str(user["_id"])
+        del user["_id"]
         users.append(user)
 
-    return users
+    return JSONResponse(status_code=status.HTTP_200_OK, content=users)
 
 
 @router.delete("/{userId}/delete", response_description="Delete User")

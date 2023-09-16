@@ -50,7 +50,7 @@ async def authenticate_user(db, username: str, password: str):
 
     if not user:
         return False
-    if not verify_password(password, user.password):
+    if not verify_password(password, user.password) or not user.is_active:
         return False
     return user
 

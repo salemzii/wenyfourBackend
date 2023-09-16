@@ -24,28 +24,21 @@ sort_field = "date"
 sort_order = 1  # Ascending order
 
 
-@router.post("/{driverId}/create", response_description="create a ride", response_model=Ride)
-async def create_ride(driverId: str, ride: Ride):
-    driver = await mongoDB["drivers"].find_one({"_id": ObjectId(driverId)})
-    if driver:
-        driver["id"] = driver["_id"]
-        del driver["_id"]
-        #driver_model = DriverModel(**driver)
-        if driver["is_verified"]:
-            ride.driver_id = str(driver["id"])
-            ride.available_seats = ride.seats
+@router.post("/create", response_description="create a ride", response_model=Ride)
+async def create_ride(ride: Ride, user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
+    if user.is_active:
+        ride.driver_id = user.id
+        ride.available_seats = ride.seats
 
-            ride_data = jsonable_encoder(ride)
+        ride_data = jsonable_encoder(ride)
 
-            # Insert the ride data into the MongoDB collection
-            result = await mongoDB["rides"].insert_one(ride_data)
+        # Insert the ride data into the MongoDB collection
+        result = await mongoDB["rides"].insert_one(ride_data)
 
-            ride.id = str(result.inserted_id)
+        ride.id = str(result.inserted_id)
 
-            return JSONResponse(status_code=status.HTTP_201_CREATED, content=ride.encode())
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "encountered error creating ride, driver not verified"})
-    # User not found
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Driver with Id: {driverId} not found")
+        return JSONResponse(status_code=status.HTTP_201_CREATED, content=ride.encode())
+    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "encountered error creating ride, driver not verified"})
 
 
 @router.put("/{rideId}/book/ride", response_description="book a ride", response_model=Ride)
@@ -101,6 +94,7 @@ async def get_ride_by_id(rideId: str, current_user: Annotated[UserModel, Depends
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"ride with Id: {rideId} not found")
 
 
+
 @router.get("/{userId}/ordered/ride", response_description="find all users ordered ride", response_model=Ride)       
 async def get_ordered_ride(userId: str, current_user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
 
@@ -136,11 +130,11 @@ async def get_ordered_ride(userId: str, current_user: Annotated[UserModel, Depen
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "credential errors, different uid and cuid"})
 
 
-@router.get("/{driverId}/published/rides", response_description="find all rides published by a driver", response_model=Ride)
-async def get_published_rides(driverId: str, current_user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
+@router.get("/published/rides", response_description="find all rides published by a driver", response_model=Ride)
+async def get_published_rides(current_user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
     
     rides = []
-    async for ride in mongoDB["rides"].find({"driver_id": driverId}):
+    async for ride in mongoDB["rides"].find({"driver_id": current_user.id}):
         ride["id"] = str(ride["_id"])
         del ride["_id"]
 

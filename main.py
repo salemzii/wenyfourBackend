@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from auth.router import router as auth_routers
-from driver.router import router as driver_routers
+from cars.routers import router as car_routers
 from rides.router import router as ride_routers
 
 import time
@@ -33,7 +33,7 @@ async def log_requests(request: Request, call_next):
     return response
 
 app.include_router(auth_routers)
-app.include_router(driver_routers)
+app.include_router(car_routers)
 app.include_router(ride_routers)
 
 

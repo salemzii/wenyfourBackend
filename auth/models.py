@@ -10,6 +10,7 @@ class UserModel(BaseModel):
     name: str = Field(...)
     email: EmailStr = Field(...)
     phone: str = Field(...)
+    nin: str = Field(...)
     password: str = Field(...)
     is_active: bool = False
     created_at: datetime = datetime.now()
@@ -22,6 +23,7 @@ class UserModel(BaseModel):
                 "name": "test user",
                 "email": "testuser@example.com",
                 "phone": "23480904578",
+                "nin": "300828566",
                 "password": "auth1234",
             }
         }
