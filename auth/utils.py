@@ -98,3 +98,47 @@ async def get_current_active_user(
 def filter_none_and_empty_fields(update_data):
     # Filter out fields with values of None or an empty string
     return {key: value for key, value in update_data.items() if value is not None and value != ""}
+
+
+
+import smtplib
+import os
+
+def sendmail(subject, body, to):
+
+    gmail_user = os.environ["MAIL_USER"]
+    gmail_password = os.environ["MAIL_PASSWORD"]
+
+    sent_from = gmail_user
+    to = to
+    subject = subject
+    body = body
+    mailTo = None
+
+    email_text = body
+
+    try:
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.ehlo()
+        server.login(gmail_user, gmail_password)
+        server.sendmail(sent_from, to, email_text)
+        server.close()
+
+        print('Email sent!')
+    except:
+        print('Something went wrong...')
+
+
+def SendAccountVerificationMail(userid, name, to):
+    access_token = create_access_token(
+        data={"sub": to, "uid": userid}, expires_delta=timedelta(minutes=60)
+    )
+    subject = "Verify your account"
+
+    verificationLink = f"http://localhost:8000/api/auth/users/{userid}/verify?token={access_token}"
+
+    body = f"""Hello {name} \nThanks for signing up to our platform, we are thrilled to have you with us. 
+                \n Kindly click the following link {verificationLink} to verify you account.\ncheers"""
+
+    sendmail(subject=subject, body=body, to=to)
+

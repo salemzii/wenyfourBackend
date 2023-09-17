@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, Body, HTTPException, status
-from fastapi.responses import Response, JSONResponse
+from fastapi import APIRouter, Depends, Body, HTTPException, status, Query
+from fastapi.responses import Response, JSONResponse, HTMLResponse
 from fastapi.encoders import jsonable_encoder
 from datetime import datetime, timedelta
 from typing import Annotated
@@ -17,9 +17,13 @@ from .utils import (
                         filter_none_and_empty_fields,
                         ACCESS_TOKEN_EXPIRE_MINUTES,
                         ALGORITHM, 
+                        SECRET_KEY,
+                        SendAccountVerificationMail
                 )
 from driver.dependencies import get_current_user_by_jwtoken
 from database import db as mongoDB
+from jose import JWTError, jwt
+
 
 router = APIRouter(
     prefix="/api/auth/users",
@@ -34,6 +38,7 @@ async def create_user(user: UserModel):
     hashed_password = get_password_hash(password=user.password)
     user.password = hashed_password
 
+    
     check_mail = await mongoDB["users"].find_one({"email": user.email})
     # more error handling here pls
 
@@ -43,6 +48,7 @@ async def create_user(user: UserModel):
         created_user = await mongoDB["users"].find_one({"_id": new_user.inserted_id})
         created_user["_id"] = str(created_user["_id"])
 
+        SendAccountVerificationMail(userid=created_user["_id"], name=user.name, to=user.email)
         return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_user)
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user with the mail already exists")
 
@@ -160,3 +166,64 @@ async def read_users_me(
     current_user: Annotated[str, Depends(get_current_active_user)]
 ):
     return current_user
+
+
+
+@router.get("/{userId}/verify", response_description="verify a user's email")
+async def verifyAccount(userId: str, token: Annotated[str, Query] = None):
+
+
+    html_content = """
+        <html>
+            <head>
+                <title>verify your email</title>
+            </head>
+            <body>
+                <h1>Account verified successfully</h1>
+            </body>
+        </html>
+    """
+
+    html_content_err = """
+        <html>
+            <head>
+                <title>verify your email</title>
+            </head>
+            <body>
+                <h1>Could not validate your token!</h1>
+            </body>
+        </html>
+    """
+
+    user = await mongoDB["users"].find_one({"_id": ObjectId(userId)})
+
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate your token",
+    )
+
+    if user:
+        user["id"] = str(user["_id"])
+        uM = UserModel(**user)
+
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            email: str = payload.get("sub")
+            if email is None:
+                return HTMLResponse(content=html_content_err, status_code=400)
+
+        except JWTError:
+            return HTMLResponse(content=html_content_err, status_code=400)
+
+        uM.is_active = True
+
+        user_enc = jsonable_encoder(uM)
+
+                # Filter out None or empty fields
+        filtered_update_data = filter_none_and_empty_fields(user_enc)
+        # Update the user document
+        update_result = await mongoDB["users"].update_one({"_id": ObjectId(userId)}, {"$set": filtered_update_data})
+
+        if update_result.modified_count == 1:
+            return HTMLResponse(content=html_content, status_code=200)
+    

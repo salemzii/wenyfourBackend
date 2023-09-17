@@ -39,5 +39,12 @@ app.include_router(ride_routers)
 
 @app.get("/api/")
 def root():
+    from auth.utils import send_email_async
+
+    send_email_async(
+            subject="hello world", 
+            email_to="salemododa2@gmail.com", 
+            body="hello people how is the world"
+            )
     return {"message": "Welcome to FastAPI with MongoDB"}
 
