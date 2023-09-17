@@ -86,7 +86,7 @@ async def get_current_user(token: str):
     except JWTError:
         raise credentials_exception
     user = await get_user(db=mongoDB, email=token_data.email)
-    if user is None:
+    if user is None or not user.is_active:
         raise credentials_exception
     return user
 

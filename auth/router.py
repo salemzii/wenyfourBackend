@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, Body, HTTPException, status, Query
-from fastapi.responses import Response, JSONResponse, HTMLResponse
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.encoders import jsonable_encoder
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Annotated
 from bson import ObjectId
 
-from .models import UserModel, TokenData, Token, UserLoginModel, UpdateUserModel
+from .models import UserModel, UserLoginModel, UpdateUserModel
 from .dependencies import *
 from .utils import (
                         authenticate_user, 
@@ -63,7 +63,7 @@ async def get_loggedin_user(user:Annotated[UserModel, Depends(get_current_user_b
 
 
 @router.get("/{userId}/user", response_description="get user by Id", response_model=UserModel)
-async def get_user_by_Id(userId: str):
+async def get_user_by_Id(userId: str, user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
     # Convert the userId to ObjectId
     user_id_object = ObjectId(userId)
 
@@ -79,7 +79,7 @@ async def get_user_by_Id(userId: str):
 
 
 @router.put("/{userId}/update", response_description="Update User", response_model=str)
-async def update_user(userId: str, user: UpdateUserModel):
+async def update_user(userId: str, user: UpdateUserModel, c_user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
     # Convert the userId to ObjectId
     user_id_object = ObjectId(userId)
 
@@ -107,7 +107,7 @@ async def update_user(userId: str, user: UpdateUserModel):
 
 
 @router.get("/all", response_description="Get all Users", response_model=list[UserModel])
-async def get_all_users():
+async def get_all_users(user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
     users = []
 
     # Retrieve all user documents from the MongoDB collection
@@ -120,7 +120,7 @@ async def get_all_users():
 
 
 @router.delete("/{userId}/delete", response_description="Delete User")
-async def delete_user(userId: str):
+async def delete_user(userId: str, user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
     # Convert the userId to ObjectId
     user_id_object = ObjectId(userId)
 
