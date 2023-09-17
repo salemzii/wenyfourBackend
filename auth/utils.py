@@ -5,6 +5,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+import smtplib
+import os
 
 
 from .models import UserModel, TokenData, UserLoginModel
@@ -15,6 +17,8 @@ from database import db as mongoDB
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+BaseUrl = os.environ["BASE_PATH"]
 
 
 class UserInDB(UserModel):
@@ -101,9 +105,6 @@ def filter_none_and_empty_fields(update_data):
 
 
 
-import smtplib
-import os
-
 def sendmail(subject, body, to):
 
     gmail_user = os.environ["MAIL_USER"]
@@ -135,7 +136,7 @@ def SendAccountVerificationMail(userid, name, to):
     )
     subject = "Verify your account"
 
-    verificationLink = f"http://localhost:8000/api/auth/users/{userid}/verify?token={access_token}"
+    verificationLink = f"{BaseUrl}/{userid}/verify?token={access_token}"
 
     body = f"""Hello {name} \nThanks for signing up to our platform, we are thrilled to have you with us. 
                 \n Kindly click the following link {verificationLink} to verify you account.\ncheers"""
