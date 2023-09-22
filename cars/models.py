@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 class Car(BaseModel):
     id: str = Field(None)
+    model: str = Field(...)
     brand: str = Field(...)
     color: str = Field(...)
     c_type: str = Field(...)
@@ -13,6 +14,7 @@ class Car(BaseModel):
         arbitrary_types_allowed = True
         json_schema_extra = {
             "example": {
+                "model": "cr7",
                 "brand": "toyota",
                 "color": "red",
                 "c_type": "camry",

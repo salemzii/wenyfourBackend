@@ -168,7 +168,6 @@ async def read_users_me(
     return current_user
 
 
-
 @router.get("/{userId}/verify", response_description="verify a user's email")
 async def verifyAccount(userId: str, token: Annotated[str, Query] = None):
 

@@ -26,11 +26,12 @@ class Ride(BaseModel):
     time: datetime.time = Field(...)
     from_location: str = Field(...)
     to_location: str = Field(...)
-    pickup_locaton: str = Field(...)
+    pickup_location: str = Field(...)
     dropoff_location: str = Field(...)
     gender: str = Field(...)
     seats: int = Field(...)
     seat_price: float = Field(...)
+    car_id: str = Field(...)
     driver_id: str = Field(None)
     expired: bool = False   
     available_seats: int = Field(None)
@@ -39,7 +40,7 @@ class Ride(BaseModel):
 
     
     class Config:
-        datetime_exp = datetime(year=2023, month=9, day=2, hour=18, minute=28, second=15)
+        datetime_exp = datetime(year=2023, month=10, day=1, hour=18, minute=28, second=15)
         arbitrary_types_allowed = True
         json_schema_extra = {
             "example": {
@@ -51,6 +52,7 @@ class Ride(BaseModel):
                 "dropoff_location": "investment",
                 "gender": "any",
                 "seats": 4,
+                "car_id": "6505ff80e9af984125dc51ac",
                 "seat_price": 4000.00,
             }
         }
@@ -63,9 +65,12 @@ class Ride(BaseModel):
                 "from_location": self.from_location,
                 "to_location": self.to_location,
                 "gender": self.gender,
+                "pickup_location": self.pickup_location,
+                "dropoff_location": self.dropoff_location,
                 "seats": self.seats,
                 "seat_price": self.seat_price,
                 "driver_id": self.driver_id,
+                "car_id": self.car_id,
                 "expired": self.expired,  
                 "available_seats": self.available_seats,
 

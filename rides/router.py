@@ -26,6 +26,7 @@ sort_order = 1  # Ascending order
 
 @router.post("/create", response_description="create a ride", response_model=Ride)
 async def create_ride(ride: Ride, user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
+    
     if user.is_active:
         ride.driver_id = user.id
         ride.available_seats = ride.seats

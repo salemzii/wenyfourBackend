@@ -70,6 +70,18 @@ async def checkUserCars(user: Annotated[UserModel, Depends(get_current_user_by_j
     return JSONResponse(content={"status": False, "message": "user has no valid vehicle attached to their profile"})
 
 
+@router.get("/user/all", response_description="get all a user's cars", response_model=Car)
+async def getUserCars(user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
+
+    cars = []
+    async for car in mongoDB["cars"].find({"user_id": user.id}):
+        car["id"] = str(car["_id"])
+        del car["_id"]
+
+        cars.append(car)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=cars)
+    
+
 @router.delete("/{carId}/delete", response_description="delete a car by id", response_model=Car)
 async def deleteCarById(carId: str, user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
     car = await mongoDB["cars"].find_one({"_id": ObjectId(carId)})
