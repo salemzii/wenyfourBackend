@@ -23,7 +23,6 @@ router = APIRouter(
 
 @router.post("/create", response_description="create a car object", response_model=Car)
 async def create_car(car: Car, user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
-
     car.user_id = user.id
     car_enc = jsonable_encoder(car)
     new_car = await mongoDB["cars"].insert_one(car_enc)

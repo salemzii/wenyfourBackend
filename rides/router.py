@@ -8,7 +8,7 @@ from bson import ObjectId
 from .models import Ride, Passenger
 from database import db as mongoDB
 from auth.models import UserModel
-from auth.utils import filter_none_and_empty_fields
+from auth.utils import filter_none_and_empty_fields, castObjectId
 from driver.models import DriverModel
 from driver.dependencies import get_current_user_by_jwtoken, get_token_header
 
@@ -30,6 +30,11 @@ async def create_ride(ride: Ride, user: Annotated[UserModel, Depends(get_current
     if user.is_active:
         ride.driver_id = user.id
         ride.available_seats = ride.seats
+        ride.from_location = ride.from_location.lower()
+        ride.to_location = ride.to_location.lower()
+
+        ride.dropoff_location = ride.dropoff_location.lower()
+        ride.pickup_location = ride.pickup_location.lower()
 
         ride_data = jsonable_encoder(ride)
 
@@ -100,33 +105,19 @@ async def get_ride_by_id(rideId: str, current_user: Annotated[UserModel, Depends
 async def get_ordered_ride(userId: str, current_user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
 
     if userId == current_user.id:
-    
-        # Perform the aggregation query
-        pipeline = [
-            {
-                "$match": {"user_id": userId}  # Filter passengers by user_id
-            },
-            {
-                "$lookup": {
-                    "from": "rides",      # Name of the Ride collection
-                    "localField": "ride_id",
-                    "foreignField": "id",
-                    "as": "booked_rides"
-                }
-            },
-            {
-                "$sort": {sort_field: sort_order}
-            }
-        ]
+        booked_rides = []
+        async for ride in mongoDB["rides"].find():
+            try: 
+                castObjectId(ride)
+                ridecpy = Ride(**ride)
+                ride = Ride(**ride)
+                del ridecpy.passengers
 
-        # Extract and print the booked rides
-        async for result in mongoDB["passengers"].aggregate(pipeline):
-            booked_rides = result.get("booked_rides", [])
-        
-        for ride in booked_rides:
-            ride["id"] = str(ride["_id"])
-            del ride["_id"]
-
+                for passenger in ride.passengers:
+                    if userId == passenger.user_id:
+                        booked_rides.append(jsonable_encoder(ridecpy))
+            except Exception as err:
+                pass
         return JSONResponse(status_code=status.HTTP_200_OK, content=booked_rides)
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "credential errors, different uid and cuid"})
 
@@ -146,28 +137,42 @@ async def get_published_rides(current_user: Annotated[UserModel, Depends(get_cur
 
 @router.get("/q/search/ride", response_description="search for a ride", response_model=Ride)
 async def search_rides(current_user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)], start_loc: Annotated[str, Query(max_length=50)] = None,
-    to_loc: Annotated[str, Query(max_length=50)] = None
+    to_loc: Annotated[str, Query(max_length=50)] = None,
+    seats: int = None
     ):
 
     search_results = []
     # Create indexes on start_location and to_location
-    await mongoDB["rides"].create_index([("from_location", 1)])  # 1 for ascending order
-    await mongoDB["rides"].create_index([("to_location", 1)])
+    #await mongoDB["rides"].create_index([("from_location", 1)])  # 1 for ascending order
+    #await mongoDB["rides"].create_index([("to_location", 1)])
 
 
     # Perform the search query
-    async for ride in mongoDB["rides"].find({"from_location": start_loc, "to_location": to_loc}):
+    async for ride in mongoDB["rides"].find({"from_location": start_loc.lower(), "to_location": to_loc.lower()}):
         ride["id"] = str(ride["_id"])
         del ride["_id"]
 
-        date_format = "%Y-%m-%d %H:%M:%S" #"%Y-%m-%d %H:%M:%S.%f"
+        date_format = "%Y-%m-%d %H:%M" #:%S "%Y-%m-%d %H:%M:%S.%f"
         ride_datetime_str = f"{ride['date']} {ride['time']}"
 
         # parse the string into a datetime object
         dt_obj = datetime.strptime(ride_datetime_str, date_format)
 
-        if not ride["expired"] and dt_obj.__gt__(datetime.now()):
+        if not (ride["expired"]) and dt_obj.__gt__(datetime.now()) and (ride["available_seats"] >= seats):
             search_results.append(ride)
+
+
+        if not ride["expired"]:
+            if dt_obj.__gt__(datetime.now()):
+                if ride["available_seats"] >= seats:
+                    if ride["driver_id"] != current_user.id:
+                        for passenger in ride["passengers"]:
+                            if passenger["user_id"] == current_user.id:
+                                continue
+                        search_results.append(ride)
+            else:
+                # background task to set ride to expired
+                pass
         
     return JSONResponse(status_code=status.HTTP_200_OK, content=search_results)
 

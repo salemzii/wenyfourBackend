@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.encoders import jsonable_encoder
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import Annotated
 from bson import ObjectId
 
@@ -35,14 +35,16 @@ router = APIRouter(
 
 @router.post("/create", response_description="Add new user", response_model=UserModel)
 async def create_user(user: UserModel):
-    hashed_password = get_password_hash(password=user.password)
-    user.password = hashed_password
 
-    
     check_mail = await mongoDB["users"].find_one({"email": user.email})
     # more error handling here pls
 
     if not check_mail:
+        hashed_password = get_password_hash(password=user.password)
+        user.password = hashed_password
+
+        user.created_at = datetime.now()
+        user.updated_at = datetime.now()
         user_enc = jsonable_encoder(user)
         new_user = await mongoDB["users"].insert_one(user_enc)
         created_user = await mongoDB["users"].find_one({"_id": new_user.inserted_id})

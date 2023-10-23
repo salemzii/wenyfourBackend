@@ -1,6 +1,5 @@
 from typing import Annotated, Union
 from pydantic import BaseModel, Field, EmailStr
-from bson import ObjectId
 from typing import Optional, List
 from datetime import datetime
 
@@ -11,10 +10,12 @@ class UserModel(BaseModel):
     email: EmailStr = Field(...)
     phone: str = Field(...)
     nin: str = Field(...)
+    date_of_birth: datetime = Field(None)
+    about: str = Field(None)
     password: str = Field(...)
     is_active: bool = False
-    created_at: datetime = datetime.now()
-    updated_at: datetime = datetime.now()
+    created_at: datetime = Field(None)
+    updated_at: datetime = Field(None)
 
     class Config:
         arbitrary_types_allowed = True
@@ -32,7 +33,9 @@ class UpdateUserModel(BaseModel):
     name: Union[str, None]  = Field(None)
     email: Union[EmailStr, None]  = Field(None)
     phone: Union[str, None]  = Field(None)
-    updated_at: datetime = datetime.now()
+    date_of_birth: datetime = Field(None)
+    about: str = Field(None)
+    updated_at: datetime = Field(None)
 
     class Config:
         arbitrary_types_allowed = True
@@ -41,6 +44,8 @@ class UpdateUserModel(BaseModel):
                 "name": "updatedtest user",
                 "email": "updatedtestuser@example.com",
                 "phone": "23480904578",
+                "date_of_birth": "2000-08-17",
+                "about": "i am a wenyfour driver"
             }
         }  
 
