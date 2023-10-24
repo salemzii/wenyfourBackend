@@ -18,7 +18,8 @@ from .utils import (
                         ACCESS_TOKEN_EXPIRE_MINUTES,
                         ALGORITHM, 
                         SECRET_KEY,
-                        SendAccountVerificationMail
+                        SendAccountVerificationMail,
+                        castObjectId
                 )
 from driver.dependencies import get_current_user_by_jwtoken
 from database import db as mongoDB
@@ -73,8 +74,7 @@ async def get_user_by_Id(userId: str, user: Annotated[UserModel, Depends(get_cur
     _user = await mongoDB["users"].find_one({"_id": user_id_object})    
 
     if _user:
-        del _user["_id"]
-        _user["id"] = userId
+        castObjectId(_user)
         user_enc = jsonable_encoder(_user)
         return JSONResponse(status_code=200, content=user_enc)
     return JSONResponse(status_code=404, content={"error": f"user with Id={userId} not found"})        
@@ -92,7 +92,7 @@ async def update_user(userId: str, user: UpdateUserModel, c_user: Annotated[User
         # Convert the Pydantic model to a JSON serializable format
         updated_user_enc = jsonable_encoder(user)
 
-                # Filter out None or empty fields
+        # Filter out None or empty fields
         filtered_update_data = filter_none_and_empty_fields(updated_user_enc)
         # Update the user document
         update_result = await mongoDB["users"].update_one({"_id": user_id_object}, {"$set": filtered_update_data})
@@ -114,8 +114,7 @@ async def get_all_users(user: Annotated[UserModel, Depends(get_current_user_by_j
 
     # Retrieve all user documents from the MongoDB collection
     async for user in mongoDB["users"].find():
-        user["id"] = str(user["_id"])
-        del user["_id"]
+        castObjectId(user)
         users.append(user)
 
     return JSONResponse(status_code=status.HTTP_200_OK, content=users)

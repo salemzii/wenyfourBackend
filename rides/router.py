@@ -120,12 +120,11 @@ async def get_ordered_ride(userId: str, current_user: Annotated[UserModel, Depen
                         car_obj = await mongoDB["cars"].find_one({"_id": ObjectId(ridemodel.car_id)})
                         driver_obj = await mongoDB["users"].find_one({"_id": ObjectId(ridemodel.driver_id)})
                         
-                        
-                        if car_obj and driver_obj:
+                        if car_obj:
                             ride["car_model"] = car_obj["model"]
                             ride["car_color"] = car_obj["color"]
                             ride["car_type"] = car_obj["c_type"]
-                        
+                        if driver_obj:
                             ride["driver_name"] = driver_obj["name"]
                             ride["driver_phone"] = driver_obj["phone"]
 
@@ -157,6 +156,7 @@ async def search_rides(current_user: Annotated[UserModel, Depends(get_current_us
     ):
 
     search_results = []
+
     # Create indexes on start_location and to_location
     #await mongoDB["rides"].create_index([("from_location", 1)])  # 1 for ascending order
     #await mongoDB["rides"].create_index([("to_location", 1)])
@@ -169,18 +169,43 @@ async def search_rides(current_user: Annotated[UserModel, Depends(get_current_us
         date_format = "%Y-%m-%d %H:%M" #:%S "%Y-%m-%d %H:%M:%S.%f"
         ride_datetime_str = f"{ride['date']} {ride['time']}"
 
-        # parse the string into a datetime object
-        dt_obj = datetime.strptime(ride_datetime_str, date_format)
+        try:
+            # parse the string into a datetime object
+            dt_obj = datetime.strptime(ride_datetime_str, date_format)
+        except ValueError as e:
+            print(f"datetime parsing error: {e}")
+            continue
 
         if not ride["expired"]:
             if dt_obj.__gt__(datetime.now()):
                 if ride["available_seats"] >= seats and not(ride["driver_id"] == current_user.id):
-                    search_results.append(ride)
+                    car_obj = await mongoDB["cars"].find_one({"_id": ObjectId(ride["car_id"])})
+                    if car_obj:
+                        ride["car_model"] = car_obj["model"]
+                        ride["car_color"] = car_obj["color"]
+                        ride["car_type"] = car_obj["c_type"]
+                    
+                    driver_obj = await mongoDB["users"].find_one({"_id": ObjectId(ride["driver_id"])})
+                    if driver_obj:
+                        ride["driver_name"] = driver_obj["name"]
+                        ride["driver_phone"] = driver_obj["phone"]
+
+                    if await NoPassengerIsCurrentUser(ride["passengers"], current_user.id):
+                        del ride["passengers"]
+                        search_results.append(ride)
+
             else:
                 # background task to set ride to expired
                 pass
         
     return JSONResponse(status_code=status.HTTP_200_OK, content=search_results)
+
+
+async def NoPassengerIsCurrentUser(passengers: List, cuid: str):
+    for passenger in passengers:
+        if str(cuid) == str(passenger["user_id"]):
+            return False
+    return True
 
 
 @router.get("/all", response_description="fetch all rides", response_model=Ride)

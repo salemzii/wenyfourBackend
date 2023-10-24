@@ -44,7 +44,7 @@ class UpdateUserModel(BaseModel):
                 "name": "updatedtest user",
                 "email": "updatedtestuser@example.com",
                 "phone": "23480904578",
-                "date_of_birth": "2000-08-17",
+                "date_of_birth": "2000-08-17 00:00",
                 "about": "i am a wenyfour driver"
             }
         }  
