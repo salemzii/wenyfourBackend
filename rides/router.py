@@ -109,15 +109,30 @@ async def get_ordered_ride(userId: str, current_user: Annotated[UserModel, Depen
         async for ride in mongoDB["rides"].find():
             try: 
                 castObjectId(ride)
-                ridecpy = Ride(**ride)
-                ride = Ride(**ride)
-                del ridecpy.passengers
+                ridemodel = Ride(**ride)
+                del ride["passengers"]
 
-                for passenger in ride.passengers:
+                for passenger in ridemodel.passengers:
+                    
                     if userId == passenger.user_id:
-                        booked_rides.append(jsonable_encoder(ridecpy))
+                    
+
+                        car_obj = await mongoDB["cars"].find_one({"_id": ObjectId(ridemodel.car_id)})
+                        driver_obj = await mongoDB["users"].find_one({"_id": ObjectId(ridemodel.driver_id)})
+                        
+                        
+                        if car_obj and driver_obj:
+                            ride["car_model"] = car_obj["model"]
+                            ride["car_color"] = car_obj["color"]
+                            ride["car_type"] = car_obj["c_type"]
+                        
+                            ride["driver_name"] = driver_obj["name"]
+                            ride["driver_phone"] = driver_obj["phone"]
+
+                            
+                        booked_rides.append(ride)
             except Exception as err:
-                pass
+                raise err
         return JSONResponse(status_code=status.HTTP_200_OK, content=booked_rides)
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "credential errors, different uid and cuid"})
 
@@ -149,8 +164,7 @@ async def search_rides(current_user: Annotated[UserModel, Depends(get_current_us
 
     # Perform the search query
     async for ride in mongoDB["rides"].find({"from_location": start_loc.lower(), "to_location": to_loc.lower()}):
-        ride["id"] = str(ride["_id"])
-        del ride["_id"]
+        castObjectId(ride)
 
         date_format = "%Y-%m-%d %H:%M" #:%S "%Y-%m-%d %H:%M:%S.%f"
         ride_datetime_str = f"{ride['date']} {ride['time']}"
@@ -158,18 +172,10 @@ async def search_rides(current_user: Annotated[UserModel, Depends(get_current_us
         # parse the string into a datetime object
         dt_obj = datetime.strptime(ride_datetime_str, date_format)
 
-        if not (ride["expired"]) and dt_obj.__gt__(datetime.now()) and (ride["available_seats"] >= seats):
-            search_results.append(ride)
-
-
         if not ride["expired"]:
             if dt_obj.__gt__(datetime.now()):
-                if ride["available_seats"] >= seats:
-                    if ride["driver_id"] != current_user.id:
-                        for passenger in ride["passengers"]:
-                            if passenger["user_id"] == current_user.id:
-                                continue
-                        search_results.append(ride)
+                if ride["available_seats"] >= seats and not(ride["driver_id"] == current_user.id):
+                    search_results.append(ride)
             else:
                 # background task to set ride to expired
                 pass
