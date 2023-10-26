@@ -10,8 +10,8 @@ class UserModel(BaseModel):
     email: EmailStr = Field(...)
     phone: str = Field(...)
     nin: str = Field(...)
-    date_of_birth: datetime = Field(None)
-    about: str = Field(None)
+    date_of_birth: Optional[datetime] = Field(None)
+    about: Optional[str] = Field(None)
     password: str = Field(...)
     is_active: bool = False
     created_at: datetime = Field(None)

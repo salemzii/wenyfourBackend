@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.encoders import jsonable_encoder
 from datetime import timedelta, datetime
 from typing import Annotated
@@ -204,6 +204,7 @@ async def verifyAccount(userId: str, token: Annotated[str, Query] = None):
 
     if user:
         user["id"] = str(user["_id"])
+        print(user)
         uM = UserModel(**user)
 
         try:
@@ -225,5 +226,6 @@ async def verifyAccount(userId: str, token: Annotated[str, Query] = None):
         update_result = await mongoDB["users"].update_one({"_id": ObjectId(userId)}, {"$set": filtered_update_data})
 
         if update_result.modified_count == 1:
-            return HTMLResponse(content=html_content, status_code=200)
+            return RedirectResponse("https://www.wenyfour.com/auth")
+        return HTMLResponse(content=html_content_err, status_code=400)
     
