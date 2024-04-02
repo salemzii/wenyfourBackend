@@ -5,8 +5,11 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from jinja2 import Environment, FileSystemLoader
 import smtplib
-import os
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import os 
 
 
 from .models import UserModel, TokenData, UserLoginModel
@@ -19,6 +22,11 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 BaseUrl = os.environ["BASE_PATH"]
+
+TEMP_ENV = Environment(loader=FileSystemLoader('templates'))  # Assuming your HTML file is in the current directory
+
+# Load HTML template
+confirm_email_template = TEMP_ENV.get_template('ConfirmEmailTemplate.html')  # Replace 'template.html' with the name of your HTML file
 
 
 class UserInDB(UserModel):
@@ -104,6 +112,10 @@ def filter_none_and_empty_fields(update_data):
     return {key: value for key, value in update_data.items() if value is not None and value != ""}
 
 
+# Function to create email content from template
+def parse_verification_temp(name, link):
+    return confirm_email_template.render(name=name, link=link)
+
 
 def sendmail(subject, body, to):
 
@@ -126,8 +138,43 @@ def sendmail(subject, body, to):
         server.close()
 
         print('Email sent!')
-    except:
+    except Exception as err:
         print('Something went wrong...')
+
+
+
+def sendmailTemp(subject, to, content):
+    gmail_user = os.environ["MAIL_USER"]
+    gmail_password = os.environ["MAIL_PASSWORD"]
+
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 465
+
+    # Create message container
+    msg = MIMEMultipart('alternative')
+    msg['From'] = gmail_user
+    msg['To'] = to
+    msg['Subject'] = subject
+
+    # Attach HTML content
+    msg.attach(MIMEText(content, 'html'))
+
+
+    try:
+        # Connect to SMTP server
+        server = smtplib.SMTP_SSL(smtp_server, smtp_port)
+        server.ehlo()
+        server.login(gmail_user, gmail_password)
+
+        # Send email
+        server.sendmail(gmail_user, to, msg.as_string())
+
+        # Close SMTP server
+        server.close()
+        print("email sent!")
+    except Exception as err:
+        print(err)
+        print('something went wrong...')
 
 
 def SendAccountVerificationMail(userid, name, to):
@@ -138,10 +185,9 @@ def SendAccountVerificationMail(userid, name, to):
 
     verificationLink = f"{BaseUrl}/{userid}/verify?token={access_token}"
 
-    body = f"""Hello {name} \nThanks for signing up to our platform, we are thrilled to have you with us. 
-                \n Kindly click the following link {verificationLink} to verify you account.\ncheers"""
-
-    sendmail(subject=subject, body=body, to=to)
+    content = parse_verification_temp(name=name, link=verificationLink)
+    
+    sendmailTemp(subject=subject, to = to, content = content)
 
 
 def castObjectId(index: dict):
@@ -149,3 +195,4 @@ def castObjectId(index: dict):
     del index["_id"]
 
     return index
+

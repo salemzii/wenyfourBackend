@@ -1,11 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
-from fastapi.encoders import jsonable_encoder
 from datetime import timedelta, datetime
 from typing import Annotated
 from bson import ObjectId
+import os
 
-from .models import UserModel, UserLoginModel, UpdateUserModel
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
+from fastapi.encoders import jsonable_encoder
+
+from jose import JWTError, jwt
+
+from driver.dependencies import get_current_user_by_jwtoken
+from database import db as mongoDB
+
+from .models import UserModel, UserLoginModel, UpdateUserModel, ContactUs, Support
+from .exceptions import contactus_exception, support_exception
 from .dependencies import *
 from .utils import (
                         authenticate_user, 
@@ -19,11 +27,11 @@ from .utils import (
                         ALGORITHM, 
                         SECRET_KEY,
                         SendAccountVerificationMail,
-                        castObjectId
+                        castObjectId,
+                        sendmail
                 )
-from driver.dependencies import get_current_user_by_jwtoken
-from database import db as mongoDB
-from jose import JWTError, jwt
+
+
 
 
 router = APIRouter(
@@ -229,3 +237,38 @@ async def verifyAccount(userId: str, token: Annotated[str, Query] = None):
             return RedirectResponse("https://www.wenyfour.com/auth")
         return HTMLResponse(content=html_content_err, status_code=400)
     
+
+
+@router.post("/contact/us", response_description="contact us")
+async def contactUs(contactus: ContactUs):
+    contactus_enc = jsonable_encoder(contactus)
+    new_contactus = await mongoDB["contactus"].insert_one(contactus_enc)
+    created_contactus = await mongoDB["contactus"].find_one({"_id": new_contactus.inserted_id})
+
+    if created_contactus:
+        mail_rep = os.environ["MAIL_R"]
+        try:
+            sendmail(subject=contactus.subject, body=contactus.message, to=mail_rep)
+        except Exception as err:
+            print(err, )
+        return JSONResponse(content={"message": "successfully created"}, status_code=status.HTTP_201_CREATED)
+    raise contactus_exception
+
+
+@router.post("/support", response_description="contact support")
+async def support(support: Support):
+    support_enc = jsonable_encoder(support)
+    new_support = await mongoDB["support"].insert_one(support_enc)
+    created_support = await mongoDB["support"].find_one({"_id": new_support.inserted_id})
+
+    if created_support:
+        mail_rep = os.environ["MAIL_R"]
+        try:
+            sendmail(subject=support.subject, body=support.body, to=mail_rep)
+        except Exception as err:
+            print(err, )
+        return JSONResponse(content={"message": "successfully created"}, status_code=status.HTTP_201_CREATED)
+    raise support_exception
+
+
+
