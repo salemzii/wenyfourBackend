@@ -12,7 +12,7 @@ from jose import JWTError, jwt
 from driver.dependencies import get_current_user_by_jwtoken
 from database import db as mongoDB
 
-from .models import UserModel, UserLoginModel, UpdateUserModel, ContactUs, Support
+from .models import UserModel, UserLoginModel, UpdateUserModel, ContactUs, Support, PasswordResetModel, ForgotPasswordResetModel, AddEmailModel
 from .exceptions import contactus_exception, support_exception
 from .dependencies import *
 from .utils import (
@@ -21,7 +21,9 @@ from .utils import (
                         get_current_user, 
                         get_password_hash, 
                         get_user,
+                        verify_password,
                         create_access_token,
+                        SendPasswordResetMail,
                         filter_none_and_empty_fields,
                         ACCESS_TOKEN_EXPIRE_MINUTES,
                         ALGORITHM, 
@@ -234,9 +236,90 @@ async def verifyAccount(userId: str, token: Annotated[str, Query] = None):
         update_result = await mongoDB["users"].update_one({"_id": ObjectId(userId)}, {"$set": filtered_update_data})
 
         if update_result.modified_count == 1:
-            return RedirectResponse("https://www.wenyfour.com/auth")
+            return RedirectResponse("https://app.wenyfour.com/auth")
         return HTMLResponse(content=html_content_err, status_code=400)
     
+
+@router.post("/reset/password", response_description="Reset Password")
+async def resetPassword(password: PasswordResetModel, 
+            current_user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
+    if current_user:
+        if verify_password(password.password, current_user.password):
+            new_password = get_password_hash(password=password.new_password)
+            # Update the user document
+            update_result = await mongoDB["users"].update_one({"_id": ObjectId(current_user.id)}, {"$set": {"password": new_password}})
+
+            if update_result.modified_count == 1:
+                # Document updated successfully
+                return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "User password updated successfully"})
+
+            # If the update didn't modify any document
+            return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "User data unchanged"})            
+    raise credentials_exception
+
+
+
+@router.post("/forgot/password", response_description="add email for forget password")
+async def addForgetPasswordMail(email: AddEmailModel):
+    if email:
+        usermodel = await get_user(db=mongoDB, email=email.email)
+        if usermodel:
+            SendPasswordResetMail(userid=usermodel.id, name=usermodel.name, to=email.email)
+            return JSONResponse(content={"message": "email sent successfully"}, status_code=status.HTTP_200_OK)
+    return JSONResponse(content={"error": "user with mail does not exists"}, status_code=status.HTTP_400_BAD_REQUEST)
+
+
+@router.get("/{userId}/reset", response_description="reset a user's forgotten password")
+async def resetAccountpswd(userId: str, token: Annotated[str, Query] = None):
+    user = await mongoDB["users"].find_one({"_id": ObjectId(userId)})
+    
+    html_content_err = """
+        <html>
+            <head>
+                <title>verify your email</title>
+            </head>
+            <body>
+                <h1>Could not validate your token!</h1>
+            </body>
+        </html>
+    """
+
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate your token",
+    )
+
+    if user:
+        user["id"] = str(user["_id"])
+        print(user)
+        uM = UserModel(**user)
+
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            email: str = payload.get("sub")
+            if email is None:
+                return HTMLResponse(content=html_content_err, status_code=400)
+
+        except JWTError:
+            return HTMLResponse(content=html_content_err, status_code=400)
+        
+    return RedirectResponse("https://app.wenyfour.com/reset")
+
+@router.post("/forgot/password/reset", response_description="reset a user's password after forgetting password")
+async def forgetPasswordReset(pswdmodel: ForgotPasswordResetModel):
+    if pswdmodel: 
+        new_password = get_password_hash(password=pswdmodel.password)
+        # Update the user document
+        update_result = await mongoDB["users"].update_one({"email": pswdmodel.email}, {"$set": {"password": new_password}})
+
+        if update_result.modified_count == 1:
+            # Document updated successfully
+            return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "User password updated successfully"})
+
+        # If the update didn't modify any document
+        return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "User data unchanged"})            
+    raise credentials_exception
+
 
 
 @router.post("/contact/us", response_description="contact us")

@@ -83,6 +83,17 @@ class Support(BaseModel):
             }
         } 
 
+class AddEmailModel(BaseModel):
+    email: EmailStr = Field(...)
+    
+
+class PasswordResetModel(BaseModel):
+    password: str = Field(...)
+    new_password: str = Field(...)
+
+class ForgotPasswordResetModel(BaseModel):
+    email: EmailStr = Field(...)
+    password: str = Field(...)
 
 class UserLoginModel(BaseModel):
     email: EmailStr = Field(...)

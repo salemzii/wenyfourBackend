@@ -29,6 +29,8 @@ TEMP_ENV = Environment(loader=FileSystemLoader('templates'))  # Assuming your HT
 confirm_email_template = TEMP_ENV.get_template('ConfirmEmailTemplate.html')  # Replace 'template.html' with the name of your HTML file
 
 
+forgot_pswd_template = TEMP_ENV.get_template('ForgotPasswordTemplate.html')
+
 class UserInDB(UserModel):
     hashed_password: str
 
@@ -117,6 +119,10 @@ def parse_verification_temp(name, link):
     return confirm_email_template.render(name=name, link=link)
 
 
+def parse_verification_temp_reset_pswd(name, link):
+    return forgot_pswd_template.render(name=name, link=link)
+
+
 def sendmail(subject, body, to):
 
     gmail_user = os.environ["MAIL_USER"]
@@ -186,6 +192,18 @@ def SendAccountVerificationMail(userid, name, to):
     verificationLink = f"{BaseUrl}/{userid}/verify?token={access_token}"
 
     content = parse_verification_temp(name=name, link=verificationLink)
+    
+    sendmailTemp(subject=subject, to = to, content = content)
+
+
+def SendPasswordResetMail(userid, name, to):
+    access_token = create_access_token(
+        data={"sub": to, "uid": userid}, expires_delta=timedelta(minutes=60)
+    )
+    subject = "Reset Your Password"
+
+    verificationLink = f"{BaseUrl}/{userid}/reset?token={access_token}"
+    content = parse_verification_temp_reset_pswd(name=name, link=verificationLink)
     
     sendmailTemp(subject=subject, to = to, content = content)
 
