@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from auth.router import router as auth_routers
 from cars.routers import router as car_routers
 from rides.router import router as ride_routers
+from transactions.routers import router as transaction_routers
 
 import time
 import random
@@ -35,6 +36,7 @@ async def log_requests(request: Request, call_next):
 app.include_router(auth_routers)
 app.include_router(car_routers)
 app.include_router(ride_routers)
+app.include_router(transaction_routers)
 
 
 @app.get("/api/")
