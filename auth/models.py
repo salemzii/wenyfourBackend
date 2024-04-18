@@ -1,6 +1,6 @@
 from datetime import datetime, date
 from typing import Union, Optional
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, AnyUrl
 
 class UserModel(BaseModel):
     id: str = Field(None)
@@ -10,6 +10,7 @@ class UserModel(BaseModel):
     nin: str = Field(...)
     date_of_birth: Optional[date] = Field(None)
     about: Optional[str] = Field(default="")
+    picture: Optional[AnyUrl] = Field(None)
     password: str = Field(...)
     is_active: bool = False
     created_at: datetime = Field(None)

@@ -3,7 +3,7 @@ from typing import Annotated
 from bson import ObjectId
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.encoders import jsonable_encoder
 
@@ -30,7 +30,8 @@ from .utils import (
                         SECRET_KEY,
                         SendAccountVerificationMail,
                         castObjectId,
-                        sendmail
+                        sendmail,
+                        cloudinary
                 )
 
 
@@ -355,3 +356,22 @@ async def support(support: Support):
 
 
 
+
+@router.post("/upload/profile/picture", response_description="upload a user's profile picture")
+async def uploadProfilePicture(picture: Annotated[UploadFile, File()], current_user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
+
+    try:
+        # Upload the file to Cloudinary
+        upload_result = cloudinary.uploader.upload(picture.file)
+
+        # You can access the Cloudinary URL for the uploaded file
+        file_url = upload_result['secure_url']
+
+        user = await mongoDB["users"].find_one({"_id": ObjectId(current_user.id)})
+        if user:
+            updated_user = await mongoDB["users"].update_one({"_id": ObjectId(current_user.id)}, {"$set": {"picture": file_url}})
+            if updated_user.modified_count == 1:
+                return JSONResponse(content={"message": "profile picture uploaded successfully!", "url": file_url}, status_code=status.HTTP_200_OK)
+            return JSONResponse(content={"error": "error updating profile picture"}, status_code=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)

@@ -6,6 +6,8 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from jinja2 import Environment, FileSystemLoader
+import cloudinary
+import cloudinary.uploader
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -214,3 +216,10 @@ def castObjectId(index: dict):
 
     return index
 
+
+
+cloudinary.config(
+    cloud_name = os.environ["CLOUDINARY_NAME"],
+    api_key = os.environ["CLOUDINARY_API_KEY"],
+    api_secret = os.environ["CLOUDINARY_API_SECRET"]
+)

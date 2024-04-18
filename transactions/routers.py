@@ -37,7 +37,7 @@ async def create_transaction(tranx: Transaction, current_user: Annotated[UserMod
 
         tranx.id = str(new_tranx.inserted_id)
         
-        return JSONResponse(status_code=status.HTTP_201_CREATED, content=tranx)
+        return JSONResponse(status_code=status.HTTP_201_CREATED, content=jsonable_encoder(tranx))
     except Exception as e:
         print(e, )  
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "encountered error creating transaction"})
