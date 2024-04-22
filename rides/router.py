@@ -166,7 +166,7 @@ async def search_rides(current_user: Annotated[UserModel, Depends(get_current_us
     async for ride in mongoDB["rides"].find({"from_location": start_loc.lower(), "to_location": to_loc.lower()}):
         castObjectId(ride)
 
-        date_format = "%Y-%m-%d %H:%M" #:%S "%Y-%m-%d %H:%M:%S.%f"
+        date_format = "%Y-%d-%m %H:%M" #:%S "%Y-%m-%d %H:%M:%S.%f"
         ride_datetime_str = f"{ride['date']} {ride['time']}"
 
         try:
