@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, Query
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import Response, JSONResponse
 from datetime import datetime, timedelta
@@ -158,8 +158,8 @@ async def search_rides(current_user: Annotated[UserModel, Depends(get_current_us
     search_results = []
 
     # Create indexes on start_location and to_location
-    #await mongoDB["rides"].create_index([("from_location", 1)])  # 1 for ascending order
-    #await mongoDB["rides"].create_index([("to_location", 1)])
+    await mongoDB["rides"].create_index([("from_location", 1)])  # 1 for ascending order
+    await mongoDB["rides"].create_index([("to_location", 1)])
 
 
     # Perform the search query
@@ -218,3 +218,10 @@ async def all_rides(current_user: Annotated[UserModel, Depends(get_current_user_
         rides.append(ride)
     return JSONResponse(status_code=status.HTTP_200_OK, content=rides)
 
+
+@router.delete("/delete/{rideId}", response_description="delete a particular ride", response_model=Ride)
+async def delete_ride(rideId: str, current_user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
+    deleted = await mongoDB["rides"].delete_one({"_id": ObjectId(rideId)})
+    if deleted:
+        return JSONResponse(content={"msg": "ride deleted successfully"}, status_code=status.HTTP_200_OK)
+    return JSONResponse(content={"error": ""})
