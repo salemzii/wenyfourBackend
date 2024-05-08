@@ -40,12 +40,12 @@ class Ride(BaseModel):
 
     
     class Config:
-        datetime_exp = datetime(year=2023, month=10, day=1, hour=18, minute=28)
+        datetime_exp = datetime(year=2023, month=10, day=1, hour=18, minute=30)
         arbitrary_types_allowed = True
         json_schema_extra = {
             "example": {
                 "date": datetime_exp.date(),
-                "time": datetime_exp.time(),
+                "time": datetime_exp.time().strftime('%H:%M'),
                 "from_location": "kano",
                 "to_location": "dutse",
                 "pickup_location": "zaria road",

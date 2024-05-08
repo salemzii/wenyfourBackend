@@ -136,26 +136,52 @@ async def get_ordered_ride(userId: str, current_user: Annotated[UserModel, Depen
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "credential errors, different uid and cuid"})
 
 
+async def SetExpiredRides(ride_ids: List[ObjectId]):
+    
+    update_data = {"expired": True}
+    
+    res = await mongoDB['rides'].update_many(
+        {'_id': {'$in': ride_ids}},
+        {'$set': update_data}
+    )
+    
+    print(res.modified_count)
+
+
 @router.get("/published/rides", response_description="find all rides published by a driver", response_model=Ride)
-async def get_published_rides(current_user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)]):
+async def get_published_rides(current_user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)], background_tasks: BackgroundTasks):
     
     rides = []
+    expired_rides_ls = []
+    
     async for ride in mongoDB["rides"].find({"driver_id": current_user.id}):
-        ride["id"] = str(ride["_id"])
-        del ride["_id"]
+        if not ride["expired"]:
+            ride["id"] = str(ride["_id"])
+            del ride["_id"]
 
-        rides.append(ride)
+            rides.append(ride)
+        else:
+            expired_rides_ls.append(ride["_id"])
+            
+    try:
+        background_tasks.add_task(SetExpiredRides, expired_rides_ls)
+    except Exception as err:
+        print(err, )
+    
     return JSONResponse(status_code=status.HTTP_200_OK, content=rides)
 
 
 
+
 @router.get("/q/search/ride", response_description="search for a ride", response_model=Ride)
-async def search_rides(current_user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)], start_loc: Annotated[str, Query(max_length=50)] = None,
-    to_loc: Annotated[str, Query(max_length=50)] = None,
-    seats: int = None
+async def search_rides(current_user: Annotated[UserModel, Depends(get_current_user_by_jwtoken)], 
+                        background_tasks: BackgroundTasks, start_loc: Annotated[str, Query(max_length=50)] = None,
+                        to_loc: Annotated[str, Query(max_length=50)] = None,
+                        seats: int = None
     ):
 
     search_results = []
+    expired_rides_ls = []
 
     # Create indexes on start_location and to_location
     await mongoDB["rides"].create_index([("from_location", 1)])  # 1 for ascending order
@@ -176,8 +202,13 @@ async def search_rides(current_user: Annotated[UserModel, Depends(get_current_us
             print(f"datetime parsing error: {e}")
             continue
 
-        if not ride["expired"]:
-            if dt_obj.__gt__(datetime.now()):
+        if not ride["expired"]:            
+            # Format the current date and time in the desired format (year-day-month hour:minute)
+            formatted_datetime = datetime.strptime(datetime.now().strftime(date_format), date_format)
+
+            
+            
+            if dt_obj.__gt__(formatted_datetime):
                 if ride["available_seats"] >= seats and not(ride["driver_id"] == current_user.id):
                     car_obj = await mongoDB["cars"].find_one({"_id": ObjectId(ride["car_id"])})
                     if car_obj:
@@ -195,10 +226,17 @@ async def search_rides(current_user: Annotated[UserModel, Depends(get_current_us
                         search_results.append(ride)
 
             else:
-                # background task to set ride to expired
-                pass
+                print(ride["id"])
+                expired_rides_ls.append(ObjectId(ride["id"]))
+ 
+    try:
+        background_tasks.add_task(SetExpiredRides, expired_rides_ls)
+    except Exception as err:
+        print(err, )
         
     return JSONResponse(status_code=status.HTTP_200_OK, content=search_results)
+
+
 
 
 async def NoPassengerIsCurrentUser(passengers: List, cuid: str):
@@ -225,3 +263,5 @@ async def delete_ride(rideId: str, current_user: Annotated[UserModel, Depends(ge
     if deleted:
         return JSONResponse(content={"msg": "ride deleted successfully"}, status_code=status.HTTP_200_OK)
     return JSONResponse(content={"error": ""})
+
+
