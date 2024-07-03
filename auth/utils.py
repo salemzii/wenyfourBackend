@@ -9,6 +9,7 @@ from jinja2 import Environment, FileSystemLoader
 import cloudinary
 import cloudinary.uploader
 import smtplib
+import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import os 
@@ -16,6 +17,11 @@ import os
 
 from .models import UserModel, TokenData, UserLoginModel
 from database import db as mongoDB
+
+
+
+
+
 
 # to get a string like this run:
 # openssl rand -hex 32
@@ -155,8 +161,9 @@ def sendmailTemp(subject, to, content):
     gmail_user = os.environ["MAIL_USER"]
     gmail_password = os.environ["MAIL_PASSWORD"]
 
-    smtp_server = "smtp.gmail.com"
-    smtp_port = 465
+    # Email configuration
+    smtp_server = 'smtp-relay.gmail.com'
+    smtp_port = 587  # or 465 for SSL
 
     # Create message container
     msg = MIMEMultipart('alternative')
@@ -166,20 +173,31 @@ def sendmailTemp(subject, to, content):
 
     # Attach HTML content
     msg.attach(MIMEText(content, 'html'))
-
+    context = ssl.create_default_context()
 
     try:
         # Connect to SMTP server
-        server = smtplib.SMTP_SSL(smtp_server, smtp_port)
-        server.ehlo()
-        server.login(gmail_user, gmail_password)
+        """
+            server = smtplib.SMTP_SSL(smtp_server, smtp_port)
+            server.ehlo()
+            server.starttls(context=context)
+            server.ehlo()
+            #server.login(gmail_user, gmail_password)
 
-        # Send email
-        server.sendmail(gmail_user, to, msg.as_string())
+            # Send email
+            server.sendmail(gmail_user, to, msg.as_string())
 
-        # Close SMTP server
-        server.close()
+            # Close SMTP server
+            server.close()
+        """
+        
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls(context=context)
+            #server.login('support@wenyfour.com', '!Wenyfour@2024')  # if authentication required
+            server.sendmail(gmail_user, [to], msg.as_string())
+        
         print("email sent!")
+            
     except Exception as err:
         print(err)
         print('something went wrong...')
