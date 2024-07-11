@@ -28,6 +28,7 @@ from database import db as mongoDB
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 180
+HOST = os.environ["HOST"]
 
 BaseUrl = os.environ["BASE_PATH"]
 
@@ -192,11 +193,19 @@ def sendmailTemp(subject, to, content):
         """
         
         with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.ehlo()
-            server.starttls(context=context)
-            #server.login('support@wenyfour.com', '!Wenyfour@2024')  # if authentication required
-            server.sendmail(gmail_user, [to], msg.as_string())
-        
+            if HOST == "production":
+                server.ehlo('api.wenyfour.com')
+                server.starttls(context=context)
+                server.ehlo('api.wenyfour.com')                
+                #server.login('support@wenyfour.com', '!Wenyfour@2024')  # if authentication required
+                server.sendmail(gmail_user, [to], msg.as_string())
+
+            else:
+                server.ehlo()
+                server.starttls(context=context)             
+                #server.login('support@wenyfour.com', '!Wenyfour@2024')  # if authentication required
+                server.sendmail(gmail_user, [to], msg.as_string())
+                 
         print("email sent!")
             
     except Exception as err:
