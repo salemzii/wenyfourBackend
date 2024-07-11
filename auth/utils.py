@@ -193,17 +193,10 @@ def sendmailTemp(subject, to, content):
         """
         
         with smtplib.SMTP(smtp_server, smtp_port) as server:
-            if HOST == "production":
-                server.ehlo('api.wenyfour.com')
-                server.starttls(context=context)
-                server.ehlo('api.wenyfour.com')                
-                #server.login('support@wenyfour.com', '!Wenyfour@2024')  # if authentication required
-                server.sendmail(gmail_user, [to], msg.as_string())
-
-            else:
                 server.ehlo()
-                server.starttls(context=context)             
-                #server.login('support@wenyfour.com', '!Wenyfour@2024')  # if authentication required
+                server.starttls(context=context)
+                server.ehlo()             
+                server.login(gmail_user, gmail_password)  # if authentication required
                 server.sendmail(gmail_user, [to], msg.as_string())
                  
         print("email sent!")

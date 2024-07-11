@@ -261,7 +261,6 @@ async def resetPassword(password: PasswordResetModel,
     raise credentials_exception
 
 
-
 @router.post("/forgot/password", response_description="add email for forget password")
 async def addForgetPasswordMail(email: AddEmailModel):
     if email:
